@@ -1,0 +1,28 @@
+version: '2'
+services:
+    elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:5.4.0
+        ports:
+            - "9200:9200"
+            - "5602:5602"
+        volumes:
+            - ./elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
+        container_name: elasticsearch-demo
+    logstash:
+        image: logstash
+        ports:
+            - "9600:9600"
+            - "5043:5043"
+        container_name: logstash-demo
+        volumes: 
+            - ./logstash:/config-dir
+        command: logstash -f /config-dir/logstash.conf
+        # command: logstash -t -f /config-dir/logstash.conf
+    kibana:
+        image: docker.elastic.co/kibana/kibana:5.4.0
+        # image: kibana
+        ports:
+            - "5601:5601"
+        container_name: kibana-demo
+        volumes:
+            - ./kibana.yml:/usr/share/kibana/config/kibana.yml

@@ -1,0 +1,8 @@
+server.host:
+  "kibana-demo"
+
+elasticsearch.url:
+  "http://elasticsearch-demo:9200"
+
+
+xpack.security.enabled: false
