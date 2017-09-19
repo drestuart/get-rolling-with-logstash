@@ -1,0 +1,15 @@
+filebeat.prospectors:
+
+- input_type: log
+
+  paths:
+    - "/logs/cron.log"
+    - "/logs/apache.log"
+
+  # Exclude lines. A list of regular expressions to match. It drops the lines that
+  # match any regular expression from the list.
+  exclude_lines: ["Updated timestamp for job"]
+
+  
+output.logstash:
+  hosts: ["logstash-demo:5043"]

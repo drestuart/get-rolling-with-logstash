@@ -18,20 +18,9 @@ After checking out or downloading this repository and [installing Docker](https:
 
 # Starting up the pipeline
 
-## Starting Filebeat
-
-    cd filebeat
-    sudo ./filebeat -e -c filebeat.yml -d "publish"
-
-Filebeat keeps track of which lines from each log file it has already published. For purposes of this demo it is convenient to delete the registry file each time Filebeat is started:
-
-    sudo rm data/registry ; sudo ./filebeat -e -c filebeat.yml -d "publish"
-
-Filebeat is also smart enough to hold onto events it wants to publish as long as the destination service is unreachable. This means we can start Filebeat and Docker in any order without losing data.
-
 ## Starting Docker
 
-Starting the Logstash and Elasticsearch containers is as simple as:
+Starting the Logstash, Elasticsearch, and Kibana containers is as simple as:
 
     docker-compose up
 
@@ -40,6 +29,18 @@ from the repository's base directory. Later, we may want to write Logstash's out
     docker-compose up | tee logstash.log
 
 Starting the containers for the first time may take a while as they need to be built from scratch.
+
+## Starting Filebeat
+
+The Filebeat container is described in a separate file, docker-compose-filebeat.yml, so that it can easily be started and stopped independent of the other containers. Start Filebeat by pointing `docker-compose` at that file:
+
+    docker-compose -f docker-compose-filebeat.yml up
+
+Filebeat keeps track of which lines from each log file it has already published. For purposes of this demo it is convenient to delete the registry file each time Filebeat is started:
+
+    rm -f filebeat/data/registry ; docker-compose -f docker-compose-filebeat.yml up
+
+Filebeat is also smart enough to hold onto events it wants to publish as long as the destination service is unreachable. This means we can start Filebeat and Docker in any order without losing data.
 
 
 # Configuration
@@ -55,10 +56,10 @@ Filebeat uses `filebeat.yml` for configuration. It looks like this:
     - input_type: log
 
       paths:
-        - "../logs/cron.log"
+        - "/logs/cron.log"
 
     output.logstash:
-      hosts: ["localhost:5043"]
+      hosts: ["logstash-demo:5043"]
 
 The block under `filebeat.prospectors:` tells Filebeat where to look for log files to monitor. `input_type: log` tells it to watch the end of each file for new lines and publish them. The other option for `input_type` is `stdin`, but `log` is the most common option.
 
@@ -262,8 +263,8 @@ Using Filebeat or Logstash is equivalent in this example, but it's a potentially
 Let's add another file to Filebeat's prospector and see what happens:
 
     paths:
-      - "../logs/cron.log"
-      - "../logs/apache.log"
+      - "/logs/cron.log"
+      - "/logs/apache.log"
 
 Oh no! We get a lot of new `_grokparsefailure` messages. Let's look at a line from apache.log to find out why.
 

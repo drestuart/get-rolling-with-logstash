@@ -1,2 +1,2 @@
-filebeat/
 logstash.log
+filebeat/data
