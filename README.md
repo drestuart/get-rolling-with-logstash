@@ -14,7 +14,9 @@ Elasticsearch is a flexible data store and provides multiple query routes.
 
 # Setup
 
-After checking out or downloading this repository and [installing Docker](https://docs.docker.com/engine/installation/), go to the repo's base directory and run `./get_filebeat.sh` to fetch a local copy of Filebeat.
+After checking out or downloading this repository, you will also need to [install Docker](https://docs.docker.com/engine/installation/).
+
+If Docker fails to run without sudo, check the [post-installation steps](https://docs.docker.com/engine/installation/linux/linux-postinstall/) for Linux.
 
 # Starting up the pipeline
 
