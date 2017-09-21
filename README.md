@@ -51,7 +51,7 @@ Here we will build up the configuration files for Filebeat and Logstash, looking
 
 ## Configuring Filebeat
 
-Filebeat uses `filebeat.yml` for configuration. It looks like this:
+Filebeat uses `filebeat.yml` for configuration. A simple configuration for our setup looks like this:
 
     filebeat.prospectors:
 
@@ -137,7 +137,7 @@ With only the first line in cron.log, logstash's output looks like this:
     logstash-demo    |           "offset" => 84,
     logstash-demo    |       "input_type" => "log",
     logstash-demo    |              "pid" => "11233",
-    logstash-demo    |           "source" => "../logs/cron.log",
+    logstash-demo    |           "source" => "/logs/cron.log",
     logstash-demo    |          "message" => "Mar 7 04:05:00 avas CROND[11233]: (cronjob) CMD (/usr/bin/mrtg /etc/mrtg/mrtg.cfg) ",
     logstash-demo    |             "type" => "log",
     logstash-demo    |          "command" => "/usr/bin/mrtg /etc/mrtg/mrtg.cfg",
@@ -185,7 +185,7 @@ When we run everything again with this new filter in place, we get:
     logstash-demo    |           "offset" => 84,
     logstash-demo    |       "input_type" => "log",
     logstash-demo    |              "pid" => "11233",
-    logstash-demo    |           "source" => "../logs/cron.log",
+    logstash-demo    |           "source" => "/logs/cron.log",
     logstash-demo    |          "message" => "Mar 7 04:05:00 avas CROND[11233]: (cronjob) CMD (/usr/bin/mrtg /etc/mrtg/mrtg.cfg) ",
     logstash-demo    |             "type" => "log",
     logstash-demo    |          "command" => "/usr/bin/mrtg /etc/mrtg/mrtg.cfg",
@@ -227,7 +227,7 @@ Let's put the rest of the lines back in cron.log and see if our filters work for
     logstash-demo    |          "version" => "5.0.2"
     logstash-demo    |     },
     logstash-demo    |           "host" => "Dan-Desktop",
-    logstash-demo    |         "source" => "../logs/cron.log",
+    logstash-demo    |         "source" => "/logs/cron.log",
     logstash-demo    |        "message" => "Mar 7 04:22:00 avas anacron[11464]: Updated timestamp for job `cron.weekly' to 2004-03-07",
     logstash-demo    |           "type" => "log",
     logstash-demo    |           "tags" => [
@@ -243,12 +243,15 @@ In `filebeat.yml`, we can tell the prospector to ignore lines using the `exclude
 
     filebeat.prospectors:
     - input_type: log
-      ...
-      exclude_lines: ["Updated timestamp for job"]
 
-This rule takes one or more regexes, and excludes any line that matches one of them.
+        paths:
+          - "/logs/cron.log"
 
-In Logstash, the `drop{}` command drops the current message and moves on to the next. For this simple case we can add the following rule at the top of the filter block:
+        exclude_lines: ["Updated timestamp for job"]
+
+This rule takes one or more regular expressoins, and excludes any line that matches one of them.
+
+In Logstash, the `drop{}` command discards the current message and moves on to the next. For this simple case we can add the following rule at the top of the filter block:
 
     filter {
         if ([message] =~ /Updated timestamp for job/) {
@@ -262,11 +265,19 @@ Using Filebeat or Logstash is equivalent in this example, but it's a potentially
 
 ## Processing two different files
 
-Let's add another file to Filebeat's prospector and see what happens:
+Let's add another prospector to Filebeat's configuration to read a new file and see what happens:
 
-    paths:
-      - "/logs/cron.log"
-      - "/logs/apache.log"
+    filebeat.prospectors:
+    - input_type: log
+
+        paths:
+          - "/logs/cron.log"
+
+        exclude_lines: ["Updated timestamp for job"]
+
+    - input_type: log
+        paths:
+          - "/logs/apache.log"
 
 Oh no! We get a lot of new `_grokparsefailure` messages. Let's look at a line from apache.log to find out why.
 
@@ -298,7 +309,7 @@ Note that the value for "message" is now an array instead of a string. With this
     logstash-demo    |           "ident" => "-",
     logstash-demo    |      "input_type" => "log",
     logstash-demo    |            "verb" => "GET",
-    logstash-demo    |          "source" => "../logs/apache.log",
+    logstash-demo    |          "source" => "/logs/apache.log",
     logstash-demo    |         "message" => "64.242.88.10 - - [07/Mar/2004:16:47:12 -0800] \"GET /robots.txt HTTP/1.1\" 200 68",
     logstash-demo    |            "type" => "log",
     logstash-demo    |            "tags" => [
@@ -336,11 +347,12 @@ Why are we still getting a `_grokparsefailure`? The `%{COMMONAPACHELOG}` filter 
 
 Now when we use the new timestamp filter:
 
+    logstash-demo    | {
     logstash-demo    |         "request" => "/mailman/listinfo/administration",
     logstash-demo    |            "auth" => "-",
     logstash-demo    |            "year" => "2004",
     logstash-demo    |           "ident" => "-",
-    logstash-demo    |          "source" => "../logs/apache.log",
+    logstash-demo    |          "source" => "/logs/apache.log",
     logstash-demo    |            "type" => "log",
     logstash-demo    |          "second" => "54",
     logstash-demo    |            "hour" => "16",
@@ -365,6 +377,44 @@ Now when we use the new timestamp filter:
     logstash-demo    |          "minute" => "58",
     logstash-demo    |      "@timestamp" => 2016-12-01T22:05:31.857Z,
     logstash-demo    |           "month" => "Mar",
+    logstash-demo    |        "response" => "200",
+    logstash-demo    |           "bytes" => "6459",
+    logstash-demo    |     "httpversion" => "1.1"
+    logstash-demo    | }
+
+Now that we are prospecting on two different files, it might be a good idea to add a field to Filebeat's output to Logstash that lets us tell the source of each event. Filebeat supports adding arbirtary fields using the `fields` parameter:
+
+    - input_type: log
+
+      paths:
+        - "/logs/cron.log"
+
+      exclude_lines: ["Updated timestamp for job"]
+
+      fields:
+        service: cron
+
+      fields_under_root: true
+
+    - input_type: log
+
+      paths:
+        - "/logs/apache.log"
+
+      fields:
+        service: apache
+
+      fields_under_root: true
+
+In this case we have added the `service` field to both prospectors, with the value `cron` or `apache` corresponding to the service the logs came from. The `fields_under_root` parameter causes the fields to be added at the top level of the event instead of as children of a `fields` object, which is the default behavior. Now our logstash event has our new `service` field:
+
+    logstash-demo    | {
+    logstash-demo    |         "request" => "/mailman/listinfo/administration",
+    ...
+    logstash-demo    |          "minute" => "58",
+    logstash-demo    |      "@timestamp" => 2016-12-01T22:05:31.857Z,
+    logstash-demo    |           "month" => "Mar",
+    logstash-demo    |         "service" => "apache",
     logstash-demo    |        "response" => "200",
     logstash-demo    |           "bytes" => "6459",
     logstash-demo    |     "httpversion" => "1.1"
@@ -406,7 +456,7 @@ Let's rerun everything and see what we get now:
     logstash-demo    |           "offset" => 1138,
     logstash-demo    |       "input_type" => "log",
     logstash-demo    |              "pid" => "11460",
-    logstash-demo    |           "source" => "../logs/cron.log",
+    logstash-demo    |           "source" => "/logs/cron.log",
     logstash-demo    |          "message" => "Mar 7 04:22:00 avas CROND[11460]: (cronjob) CMD (run-parts /etc/cron.weekly) ",
     logstash-demo    |             "type" => "log",
     logstash-demo    |          "command" => "run-parts /etc/cron.weekly",
@@ -419,6 +469,7 @@ Let's rerun everything and see what we get now:
     logstash-demo    |       "@timestamp" => 2017-03-07T04:22:00.000Z,
     logstash-demo    |            "month" => "Mar",
     logstash-demo    |             "hour" => "04",
+    logstash-demo    |          "service" => "cron",
     logstash-demo    |     "process_name" => "CROND",
     logstash-demo    |         "@version" => "1",
     logstash-demo    |             "beat" => {
@@ -465,7 +516,7 @@ This command queries for all entries with a `response` field equal to "401". It 
               "auth" : "-",
               "year" : "2004",
               "ident" : "-",
-              "source" : "../logs/apache.log",
+              "source" : "/logs/apache.log",
               "type" : "log",
               "second" : "35",
               "hour" : "16",
@@ -491,6 +542,7 @@ This command queries for all entries with a `response` field equal to "401". It 
               "minute" : "52",
               "@timestamp" : "2004-03-08T00:52:35.000Z",
               "month" : "Mar",
+              "service" : "apache",
               "response" : "401",
               "bytes" : "12851",
               "httpversion" : "1.1"
