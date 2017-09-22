@@ -14,7 +14,6 @@ filebeat.prospectors:
 
   fields_under_root: true
 
-
 - input_type: log
 
   paths:
