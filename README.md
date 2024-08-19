@@ -1,7 +1,5 @@
 # Get Rolling With Logstash
 
-![Logstash diagram](https://www.elastic.co/guide/en/logstash/current/static/images/logstash.png)
-
 This repository is meant to be a quick-start guide and skeleton for a Filebeat-Logstash-Elasticsearch-Kibana pipeline. It is partially based on [Elastic's logstash intro](https://www.elastic.co/guide/en/logstash/current/introduction.html) and uses docker for quick-and-easy startup.
 
 ## Components
